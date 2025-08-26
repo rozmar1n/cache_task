@@ -5,6 +5,8 @@ project(LRU)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+enable_testing()
+
 add_subdirectory(LRU)
 
 add_executable(prog main.cc)
