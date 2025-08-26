@@ -7,7 +7,7 @@ struct page_t {
 page_t slow_get_page(int key);
 
 struct cache_test_context {
-    size_t cz;
+    size_t cz;    
     std::vector<int> data;
 
 public:
@@ -15,4 +15,4 @@ public:
     int run(); 
     void take_data();
 };
-} /*namespace LRU*/
+} /*namespace LRU*
