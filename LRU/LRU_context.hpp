@@ -15,4 +15,4 @@ public:
     int run(); 
     void take_data();
 };
-} /*namespace LRU*
+} /*namespace LRU*/
