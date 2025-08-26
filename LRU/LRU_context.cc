@@ -2,14 +2,14 @@
 #include "LRU.hpp"
 #include <iostream>
 
-page_t slow_get_page(int key) {
+LRU::page_t LRU::slow_get_page(int key) {
     return page_t{key};
 }
 
-cache_test_context::cache_test_context()
+LRU::cache_test_context::cache_test_context()
     : cz(0), data() {}
 
-void cache_test_context::take_data() {
+void LRU::cache_test_context::take_data() {
     std::cin >> cz;
 
     int n;
@@ -22,7 +22,7 @@ void cache_test_context::take_data() {
     }
 }
 
-int cache_test_context::run() {
+int LRU::cache_test_context::run() {
     cache_t<page_t> c{cz};
     int counter = 0;
 

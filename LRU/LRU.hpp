@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include <cstddef>
 
+
+namespace LRU {
 template <typename T, typename KeyT = int>
 class cache_t {
     size_t sz_;
@@ -22,7 +24,7 @@ public:
     {    
         auto hit = hash_.find(key);
         if (hit == hash_.end()) { // not found
-            if (full()) {
+            if (full() && cache_.size() != 0) {
                 hash_.erase(cache_.back().id);
                 cache_.pop_back();
             }
@@ -40,4 +42,5 @@ public:
 
     cache_t(size_t sz) : sz_(sz) {}
 };
+} /*namespace LRU*/
 

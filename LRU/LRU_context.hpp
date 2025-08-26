@@ -1,5 +1,6 @@
 #include <vector>
 
+namespace LRU {
 struct page_t {
     int id;
 };
@@ -14,3 +15,4 @@ public:
     int run(); 
     void take_data();
 };
+} /*namespace LRU*/
