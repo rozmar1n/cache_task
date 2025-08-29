@@ -33,7 +33,7 @@ TEST(LRUTest, SingleCellCache) {
     LRU::cache_test_context ctx;
     ctx.cz = 1;
     ctx.data = {1, 2, 3, 4, 5, 6};
-    EXPECT_EQ(ctx.run(), 1);
+    EXPECT_EQ(ctx.run(), 0);
 }
 
 TEST(LRUTest, CacheBiggerThanData) {
