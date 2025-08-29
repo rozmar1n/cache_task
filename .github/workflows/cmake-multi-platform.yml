@@ -17,7 +17,7 @@ jobs:
         uses: actions/cache@v3
         with:
             path: build/_deps
-            key: ${{ runner.os }}-cmake-${{ hashFiles('CMakeLists.txt', 'LRU/CMakeLists.txt')
+            key: ${{ runner.os }}-cmake-${{ hashFiles('CMakeLists.txt', 'LRU/CMakeLists.txt') }}
       
       - name: Configure (CMake)
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
