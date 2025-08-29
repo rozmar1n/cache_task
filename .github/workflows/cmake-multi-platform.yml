@@ -6,31 +6,24 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build libgtest-dev
-          # собрать и установить googletest из исходников пакета
-          if [ -d /usr/src/googletest ]; then
-            cd /usr/src/googletest
-            sudo cmake -S . -B build -DBUILD_SHARED_LIBS=ON
-            sudo cmake --build build --config Release -- -j$(nproc)
-            sudo cmake --install build
-          fi
-
+      - name: Cache CMake deps
+        uses: actions/cache@v3
+        with:
+            path: build/_deps
+            key: ${{ runner.os }}-cmake-${{ hashFiles('CMakeLists.txt', 'LRU/CMakeLists.txt')
+      
       - name: Configure (CMake)
-        run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build -- -j$(nproc)
+        run: cmake --build build --config Release
 
       - name: Test
         run: ctest --test-dir build/LRU --output-on-failure

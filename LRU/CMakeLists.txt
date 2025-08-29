@@ -1,7 +1,6 @@
 add_library(LRU_context_lib LRU_context.cc)
 target_include_directories(LRU_context_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-find_package(GTest REQUIRED)
 include(GoogleTest)
 
 add_executable(LRU_tests LRU_tests.cc)
