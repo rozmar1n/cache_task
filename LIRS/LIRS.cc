@@ -21,12 +21,9 @@ int main() {
     int hit = 0;
     for(int i = 0; i < N_pushes; i++) {
         std::cin >> hit;
-        //std::cout << "page_num: " << hit << std::endl;
         if(ch.lookup_update(hit, slow_get_page)) {
             counter++;
         }
-        //ch.print();
-        //std::cout << "\n\n\n\n\n";
     }
     std::cout <<counter << std::endl;
 
