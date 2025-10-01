@@ -19,6 +19,8 @@ class cache_t {
     }
     
 public:
+    cache_t(size_t sz) : sz_(sz) {}
+    
     template <typename F>
     bool lookup_update(KeyT key, F slow_get_page)
     {    
@@ -38,9 +40,7 @@ public:
             cache_.splice(cache_.begin(), cache_,
                           eltit, std::next(eltit));
         return true;
-    }
-
-    cache_t(size_t sz) : sz_(sz) {}
+    }  
 };
 } /*namespace LRU*/
 

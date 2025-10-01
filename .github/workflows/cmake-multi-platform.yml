@@ -25,5 +25,9 @@ jobs:
       - name: Build
         run: cmake --build build --config Release
 
-      - name: Test
+      - name: Test_LRU
         run: ctest --test-dir build/LRU --output-on-failure
+
+      - name: Test_LIRS 
+        run: ctest --test-dir build/LIRS --output-on-failure
+

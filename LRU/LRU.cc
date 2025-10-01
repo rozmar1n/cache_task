@@ -1,5 +1,5 @@
 #include <iostream>
-#include "LRU/LRU_context.hpp"
+#include "LRU_context.hpp"
 
 int main(int argc, char **argv) {
 
@@ -9,3 +9,4 @@ int main(int argc, char **argv) {
 
     return 0;
 }
+

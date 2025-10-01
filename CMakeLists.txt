@@ -17,6 +17,5 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 add_subdirectory(LRU)
+add_subdirectory(LIRS)
 
-add_executable(prog main.cc)
-target_link_libraries(prog PRIVATE LRU_context_lib)
