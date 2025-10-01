@@ -99,7 +99,7 @@ private:
                 HIR_res_count++;
                 res_count++;
             } else {
-                HIR_res_count++;  // Только HIR_res_count для конвертации
+                HIR_res_count++;  
             }
             return;
         }
@@ -192,11 +192,9 @@ private:
         
         elem.page = page;
         
-        // Если элемент уже в StackS, просто перемещаем его в начало
         if (elem.itS.has_value()) {
             StackS.splice(StackS.begin(), StackS, elem.itS.value());
         } else {
-            // Только если элемента нет в StackS, добавляем новый
             StackS.push_front(page.id);
             elem.itS = StackS.begin();
         }
@@ -216,22 +214,14 @@ private:
 
 public:
     cache_t(size_t sz, double hir_ratio = 0.1) : sz_(sz) {
-        //TODO: пересмотреть то, как задаются размеры LIR, HIR
-        if (sz_ > 2) {
+        if (sz_ >= 2) {
             HIR_cap = std::max(1UL, static_cast<size_t>(sz_ * hir_ratio));
             LIR_cap = sz_ - HIR_cap;
-        } else if (sz_ == 1) {
+        } else if (sz_ <= 1) {
+            //WARN "cache size should be at least 2"
             throw std::invalid_argument("Cache size must be at least 2");
-        } else {
-            LIR_cap = 1;
-            HIR_cap = 1;
         }
     }
-
-    ~cache_t() {
-        
-    }
-    
 
     template <typename F>
     bool lookup_update(KeyT key, F slow_get_page) {
