@@ -1,0 +1,148 @@
+#pragma once
+
+#include <list>
+#include <unordered_map>
+#include <cstddef>
+#include <vector>
+#include <cassert>
+#include <iostream>
+
+
+namespace ideal {
+template <typename T, typename KeyT = int>
+class cache_t {
+    size_t sz_;
+    std::list<T> cache_;
+    std::vector<KeyT> requests_;
+    
+    using ListIt = typename std::list<T>::iterator;
+    std::unordered_map<KeyT, ListIt> hash_;
+    
+    bool full() const {
+        return cache_.size() == sz_;
+    }
+private:
+    int number_in_future(int start, KeyT elem) {
+        for (int i = start; i < requests_.size(); i++) { 
+            if(requests_[i] == elem) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    KeyT least_important_el(int request_num) {
+        KeyT req_id = requests_[request_num];
+        
+        int ret = number_in_future(request_num + 1, req_id);
+        if (ret == -1) return req_id;
+        
+        for (auto it = cache_.begin(); it != cache_.end(); it++) {
+            T el = *it;
+            int fn = number_in_future(request_num, el.id);
+            
+            if (fn == -1) return el.id;
+            
+            if (ret < fn) {
+                ret = fn;
+            }
+        }
+        return requests_[ret];
+    }
+
+public:
+    cache_t(size_t sz, std::vector<KeyT> rq) : 
+        sz_(sz),
+        requests_(rq) {};
+    
+    template <typename F>
+    bool lookup_update(int request_num, F slow_get_page)
+    {    
+        KeyT key = requests_[request_num];
+        auto hit = hash_.find(key);
+        if (hit == hash_.end()) { 
+            T new_page = slow_get_page(key);
+            if (full() && cache_.size() != 0) {
+                KeyT for_removal = least_important_el(request_num);
+                
+                if(key == for_removal) return false;
+                
+                auto fr_it = hash_.find(for_removal);
+                assert(fr_it != hash_.end());
+
+                hash_.erase(for_removal);
+                cache_.erase(fr_it->second);
+            }
+            cache_.push_front(new_page) ;
+            hash_[key] = cache_.begin();
+            return false;
+        }
+        return true;
+    }
+
+    void print() const {
+        using std::cout;
+        using std::endl;
+    
+        cout << "=== CACHE DEBUG PRINT ===" << endl;
+    
+        cout << "Cache size: " << sz_ << endl;
+        cout << "Requests: [ ";
+        for (size_t i = 0; i < requests_.size(); i++) {
+            cout << requests_[i] << (i + 1 < requests_.size() ? " " : "");
+        }
+        cout << " ]" << endl;
+    
+        cout << "Hash table:" << endl;
+        for (const auto &p : hash_) {
+            cout << "  key=" << p.first 
+                 << " -> id=" << p.second->id 
+                 << endl;
+        }
+    
+        cout << "Cache list: [ ";
+        for (const auto &el : cache_) {
+            cout << el.id << " ";
+        }
+        cout << "]" << endl;
+    
+        cout << "=========================" << endl;
+    }
+
+    void print(size_t request_num) const {
+        using std::cout;
+        using std::endl;
+    
+        cout << "=== CACHE DEBUG PRINT ===" << endl;
+        
+        cout << "Cache size: " << sz_ << endl;
+        cout << "Requests: [ ";
+        for (size_t i = 0; i < requests_.size(); i++) {
+            if (i == request_num) {
+                cout << ">>" << requests_[i] << "<< ";
+            } else {
+                cout << requests_[i] << " ";
+            }
+        }
+        cout << "]" << endl;
+    
+        cout << "Hash table:" << endl;
+        for (const auto &p : hash_) {
+            cout << "  key=" << p.first 
+                 << " -> id=" << p.second->id 
+                 << endl;
+        }
+    
+        cout << "Cache list: [ ";
+        for (const auto &el : cache_) {
+            cout << el.id << " ";
+        }
+        cout << "]" << endl;
+    
+        cout << "=========================" << endl;
+    }
+
+
+};
+} /*namespace ideal*/
+
+

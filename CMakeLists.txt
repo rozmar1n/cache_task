@@ -18,4 +18,4 @@ enable_testing()
 
 add_subdirectory(LRU)
 add_subdirectory(LIRS)
-
+add_subdirectory(ideal)
