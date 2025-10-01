@@ -18,8 +18,6 @@ class cache_t {
     size_t LIR_cap;
     size_t HIR_cap;
     size_t LIR_count = 0;
-    size_t res_count = 0;
-    size_t HIR_res_count = 0;
     
     enum status {
         INVALID = -1,
@@ -73,7 +71,7 @@ private:
                     entry.st = HIR_RES;
                     LIR_count--;
                     
-                    add_to_StackQ(bottom_id, false);
+                    add_to_StackQ(bottom_id);
                     
                     StackS.pop_back();
                     entry.itS = std::nullopt;
@@ -93,16 +91,10 @@ private:
         }
     }
 
-    void add_to_StackQ(KeyT p_id, bool is_new_resident = true) {
+    void add_to_StackQ(KeyT p_id) {
         if (StackQ.size() < HIR_cap) {
             StackQ.push_front(p_id);
             hash_[p_id].itQ = StackQ.begin();
-            if (is_new_resident) {
-                HIR_res_count++;
-                res_count++;
-            } else {
-                HIR_res_count++;  
-            }
             return;
         }
     
@@ -117,25 +109,15 @@ private:
             fst_hit_ref.st    = HIR_NRES;
             fst_hit_ref.page  = std::nullopt;
             fst_hit_ref.itQ   = std::nullopt;
-            HIR_res_count--;
-            res_count--;
             StackQ.pop_back();
             prune_StackS();
         } else {
             hash_.erase(fst_hir_id);
-            HIR_res_count--;
-            res_count--;
             StackQ.pop_back();
         }
 
         StackQ.push_front(p_id);
         hash_[p_id].itQ = StackQ.begin();
-        if (is_new_resident) {
-            HIR_res_count++;
-            res_count++;
-        } else {
-            HIR_res_count++;
-        }
     }
 
     void add_new(T page) {
@@ -145,7 +127,6 @@ private:
             hash_[page.id] = HashEntry_t(StackS.begin(), 
                                          std::nullopt, LIR, page);
             LIR_count++;
-            res_count++;
         } else {
             hash_[page.id] = HashEntry_t(StackS.begin(), 
                                          std::nullopt, HIR_RES, page);
@@ -170,7 +151,6 @@ private:
      
             elem.st = LIR;
             LIR_count++;
-            HIR_res_count--;
             if (elem.itQ) {
                 StackQ.erase(elem.itQ.value());
                 elem.itQ = std::nullopt;
@@ -204,7 +184,6 @@ private:
         if (LIR_count < LIR_cap) {
             elem.st = LIR;
             LIR_count++;
-            res_count++;
             prune_StackS();
         } else {
             elem.st = HIR_RES;
