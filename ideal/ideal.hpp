@@ -97,6 +97,17 @@ public:
         }
         return true;
     }
+    
+    template <typename F>
+    int run_cache(F slow_get_page) {
+        int counter = 0;
+        for(int i = 0; i < requests_.size(); i++) {
+            if(lookup_update(i, slow_get_page)) {
+                counter++;
+            }
+        }
+        return counter;
+    }
 
     void print() const {
         using std::cout;
