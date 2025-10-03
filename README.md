@@ -37,7 +37,14 @@ LRU cache:
 build/LRU/LRU_tests
 ```
 
-> ***Note:*  tests for ideal cache are not available yet
+Ideal cache:
+
+```bash
+build/ideal/ideal_tests
+
+#for big tests
+build/ideal/ideal_big_tests
+```
 
 ## Project Structure
 
@@ -73,5 +80,4 @@ ideal cache:
 ```bash
 build/ideal/ideal.out
 ```
-
 
