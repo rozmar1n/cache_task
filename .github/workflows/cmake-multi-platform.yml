@@ -32,5 +32,5 @@ jobs:
         run: ctest --test-dir build/LIRS --output-on-failure
         
       - name: Test_ideal
-        run: ctest --test-dir ideal --output-on-failure
+        run: ctest --test-dir build/ideal --output-on-failure
 
