@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <cassert>
-#include <cstdint>
 #include <vector>
 
 namespace LIRS {
@@ -17,9 +16,9 @@ template <typename T, typename KeyT = int>
 class cache_t {
 
     size_t sz_;
-    size_t LIR_cap;
-    size_t HIR_cap;
-    size_t LIR_count = 0;
+    size_t lir_cap;
+    size_t hir_cap;
+    size_t lir_counter = 0;
     
     enum status {
         INVALID = -1,
@@ -29,8 +28,8 @@ class cache_t {
     };
 
 
-    std::list<KeyT> StackS_;
-    std::list<KeyT> StackQ_;
+    std::list<KeyT> stack_s_;
+    std::list<KeyT> stack_q_;
     
     std::vector<T> cache_;
     std::vector<size_t> free_list_;
@@ -41,7 +40,7 @@ class cache_t {
     struct HashEntry_t {
         std::optional<ListIt> itS;
         std::optional<ListIt> itQ;
-        size_t pg_idx; 
+        std::optional<size_t> pg_idx; 
        
         status st = INVALID;
 
@@ -50,191 +49,26 @@ class cache_t {
         HashEntry_t(std::optional<ListIt> s, 
                     std::optional<ListIt> q,
                     status st = INVALID,
-                    size_t p = SIZE_MAX) 
+                    std::optional<size_t> p = std::nullopt) 
         :   itS(s), 
             itQ(q),
             st(st),
             pg_idx(p) {}
     };
 
-    void free_place() {
-        KeyT victim_id = StackQ_.back();
-        auto vit = hash_.find(victim_id);
-        assert(vit != hash_.end());
-        auto &victim = vit->second;
-        
-        bool in_StackS = victim.itS != std::nullopt;
-        
-        if (in_StackS) {
-            victim.st = HIR_NRES;
-            assert(victim.pg_idx != SIZE_MAX); 
-            
-            delete_from_cache(victim.pg_idx);
-            victim.pg_idx = SIZE_MAX;
-            
-            victim.itQ = std::nullopt;
-            StackQ_.pop_back();
-            prune_StackS();
-        } else {
-            assert(victim.pg_idx != SIZE_MAX); 
-                
-            delete_from_cache(victim.pg_idx);
-            
-            StackQ_.pop_back();
-            hash_.erase(victim_id);
-        }
-    }
 
     std::unordered_map<KeyT, HashEntry_t> hash_;
-private:
-    size_t add_to_cache(T page) {
-        if (free_list_.empty()) {
-            //TODO: обработать случай, когда нет места
-            assert(!StackQ_.empty());
-            free_place();
-        } 
-        
-        size_t idx = free_list_.back();
-        free_list_.pop_back();
-        cache_[idx] = page;
-        return idx;
-    }
-
-    size_t delete_from_cache(size_t idx) {
-        //TODO: подумать, стоит ли как-то занулить страницу в кэше
-        free_list_.push_back(idx);
-        return idx;
-    }
-
-    void prune_StackS() {
-        while (!StackS_.empty()) {
-            KeyT bottom_id = StackS_.back();
-            auto it = hash_.find(bottom_id);
-            assert(it != hash_.end());
-            auto &entry = it->second;
-            
-            if (entry.st == LIR) {
-                if (LIR_count > LIR_cap) {
-                    entry.st = HIR_RES;
-                    LIR_count--;
-                    
-                    add_to_StackQ(bottom_id);
-                    
-                    StackS_.pop_back();
-                    entry.itS = std::nullopt;
-                } else {
-                    break;
-                }
-            } 
-            else {
-                StackS_.pop_back();
-                
-                if (entry.st == HIR_RES) {
-                    entry.itS = std::nullopt;
-                } else {
-                    assert(entry.pg_idx == SIZE_MAX);
-                    hash_.erase(bottom_id);
-                }
-            }
-        }
-    }
-
-    void add_to_StackQ(KeyT p_id) {
-        if (StackQ_.size() < HIR_cap) {
-            StackQ_.push_front(p_id);
-            hash_[p_id].itQ = StackQ_.begin();
-            return;
-        }
-        
-        assert(!StackQ_.empty());
-        free_place();
-
-        StackQ_.push_front(p_id);
-        hash_[p_id].itQ = StackQ_.begin();
-    }
-
-    void add_new(T page) {
-        StackS_.push_front(page.id);
-    
-        size_t idx = add_to_cache(page);
-        if (LIR_count < LIR_cap) {
-            hash_[page.id] = HashEntry_t(StackS_.begin(), 
-                                         std::nullopt, LIR, idx);
-            LIR_count++;
-        } else {
-            hash_[page.id] = HashEntry_t(StackS_.begin(), 
-                                         std::nullopt, HIR_RES, idx);
-            add_to_StackQ(page.id);  
-        }
-        prune_StackS();
-    }
- 
-
-    void proc_LIR(ListIt elem) {
-        StackS_.splice(StackS_.begin(), StackS_, elem);
-        prune_StackS();
-        return;
-    }
-
-    void proc_HIR_RES(HashEntry_t& elem) {
-        bool is_in_StackS = elem.itS.has_value();
- 
-        if (is_in_StackS) {
-            StackS_.splice(StackS_.begin(), StackS_, elem.itS.value());
-     
-            elem.st = LIR;
-            LIR_count++;
-            if (elem.itQ) {
-                StackQ_.erase(elem.itQ.value());
-                elem.itQ = std::nullopt;
-            }
-     
-             prune_StackS();
-        } else {
-            KeyT key = *elem.itQ.value();
-            
-            StackQ_.splice(StackQ_.begin(), StackQ_, elem.itQ.value());
-            
-            StackS_.push_front(key);
-            elem.itS = StackS_.begin();
-     
-            prune_StackS();
-        }
-    }
-
-    void proc_HIR_NRES(HashEntry_t& elem, T page) {
-        assert(elem.pg_idx == SIZE_MAX);
-        
-        elem.pg_idx = add_to_cache(page);        
-        if (elem.itS.has_value()) {
-            StackS_.splice(StackS_.begin(), StackS_, elem.itS.value());
-        } else {
-            StackS_.push_front(page.id);
-            elem.itS = StackS_.begin();
-        }
-    
-        if (LIR_count < LIR_cap) {
-            elem.st = LIR;
-            LIR_count++;
-            prune_StackS();
-        } else {
-            elem.st = HIR_RES;
-            add_to_StackQ(page.id);
-            return;
-        }
-    }
-
 
 public:
     cache_t(size_t sz, double hir_ratio = 0.1) : sz_(sz) {
         if (sz_ >= 2) {
-            HIR_cap = std::max(1UL, static_cast<size_t>(sz_ * hir_ratio));
-            LIR_cap = sz_ - HIR_cap;
+            hir_cap = std::max(1UL, static_cast<size_t>(sz_ * hir_ratio));
+            lir_cap = sz_ - hir_cap;
             
             cache_.resize(sz_);
             free_list_.reserve(sz_);
             for (size_t i = 0; i < sz_; i++) {
-                free_list_.push_back(sz - 1 - i);
+                free_list_.push_back(sz_ - 1 - i);
             }
 
         } else if (sz_ <= 1) {
@@ -257,10 +91,10 @@ public:
                 proc_LIR(eltit.itS.value());
                 return true;
             case HIR_RES:
-                proc_HIR_RES(eltit);
+                process_hir_res_hit(eltit);
                 return true;
             case HIR_NRES:
-                proc_HIR_NRES(eltit, slow_get_page(key));
+                process_hir_nres_hit(eltit, slow_get_page(key));
                 return false;
             default:
                 assert(false && "Unknown state");
@@ -271,16 +105,16 @@ public:
 
     void print() const {
         std::cout << "CACHE: sz=" << sz_
-                  << " LIR_cap=" << LIR_cap
-                  << " HIR_cap=" << HIR_cap
-                  << " LIR_count=" << LIR_count
-                  << " StackS.size=" << StackS_.size()
-                  << " StackQ.size=" << StackQ_.size()
+                  << " LIR_cap=" << lir_cap
+                  << " HIR_cap=" << hir_cap
+                  << " LIR_count=" << lir_counter
+                  << " StackS.size=" << stack_s_.size()
+                  << " StackQ.size=" << stack_q_.size()
                   << "\n";
     
         std::cout << "StackS (front -> back):\n";
         size_t idx = 0;
-        for (auto key = StackS_.begin(); key != StackS_.end(); ++key, ++idx) {
+        for (auto key = stack_s_.begin(); key != stack_s_.end(); ++key, ++idx) {
             std::cout << "  [" << idx << "] id=" << *key;
             auto h = hash_.find(*key);
             if (h != hash_.end()) {
@@ -300,7 +134,7 @@ public:
 
         std::cout << "StackQ (front -> back):\n";
         idx = 0;
-        for (auto it = StackQ_.begin(); it != StackQ_.end(); ++it, ++idx) {
+        for (auto it = stack_q_.begin(); it != stack_q_.end(); ++it, ++idx) {
             auto key = *it;
             std::cout << "  [" << idx << "] id=" << key;
             auto h = hash_.find(key);
@@ -327,11 +161,177 @@ public:
             }
             std::cout << " itS="  << (kv.second.itS  ? "yes" : "no");
             std::cout << " itQ="  << (kv.second.itQ  ? "yes" : "no");
-            std::cout << " page=" << (cache_[kv.second.pg_idx] ? "yes" : "no");
+            std::cout << " page=" << (kv.second.pg_idx.has_value() ? "yes" : "no");
             std::cout << "\n";
         }
 
         std::cout << std::flush;
     }
+private:
+    void free_place() {
+        KeyT victim_id = stack_q_.back();
+        auto vit = hash_.find(victim_id);
+        assert(vit != hash_.end());
+        auto &victim = vit->second;
+        
+        bool in_StackS = victim.itS != std::nullopt;
+        
+        if (in_StackS) {
+            victim.st = HIR_NRES;
+            assert(victim.pg_idx.has_value()); 
+            
+            delete_from_cache(victim.pg_idx.value());
+            victim.pg_idx = std::nullopt;
+            
+            victim.itQ = std::nullopt;
+            stack_q_.pop_back();
+            prune_StackS();
+        } else {
+            assert(victim.pg_idx.has_value()); 
+                
+            delete_from_cache(victim.pg_idx.value());
+            
+            stack_q_.pop_back();
+            hash_.erase(victim_id);
+        }
+    }
+
+    size_t add_to_cache(T page) {
+        if (free_list_.empty()) {
+            assert(!stack_q_.empty());
+            free_place();
+        } 
+        
+        size_t idx = free_list_.back();
+        free_list_.pop_back();
+        cache_[idx] = page;
+        return idx;
+    }
+
+    size_t delete_from_cache(size_t idx) {
+        //TODO: подумать, стоит ли как-то занулить страницу в кэше
+        free_list_.push_back(idx);
+        return idx;
+    }
+
+    void prune_StackS() {
+        while (!stack_s_.empty()) {
+            KeyT bottom_id = stack_s_.back();
+            auto it = hash_.find(bottom_id);
+            assert(it != hash_.end());
+            auto &entry = it->second;
+            
+            if (entry.st == LIR) {
+                if (lir_counter > lir_cap) {
+                    entry.st = HIR_RES;
+                    lir_counter--;
+                    
+                    add_to_StackQ(bottom_id, it->second);
+                    
+                    stack_s_.pop_back();
+                    entry.itS = std::nullopt;
+                } else {
+                    break;
+                }
+            } 
+            else {
+                stack_s_.pop_back();
+                
+                if (entry.st == HIR_RES) {
+                    entry.itS = std::nullopt;
+                } else {
+                    assert(entry.pg_idx == std::nullopt);
+                    hash_.erase(bottom_id);
+                }
+            }
+        }
+    }
+
+    void add_to_StackQ(KeyT p_id, HashEntry_t& entry) {
+        if (stack_q_.size() < hir_cap) {
+            stack_q_.push_front(p_id);
+            entry.itQ = stack_q_.begin();
+            return;
+        }
+        
+        assert(!stack_q_.empty());
+        free_place();
+
+        stack_q_.push_front(p_id);
+        entry.itQ = stack_q_.begin();
+    }
+
+    void add_new(T page) {
+        stack_s_.push_front(page.id);
+    
+        size_t idx = add_to_cache(page);;
+        auto &entry_it = hash_[page.id];
+        if (lir_counter < lir_cap) {
+            entry_it = HashEntry_t(stack_s_.begin(), 
+                                         std::nullopt, LIR, idx);
+            lir_counter++;
+        } else {
+            entry_it = HashEntry_t(stack_s_.begin(), 
+                                         std::nullopt, HIR_RES, idx);
+            add_to_StackQ(page.id, entry_it);  
+        }
+        prune_StackS();
+    }
+ 
+
+    void proc_LIR(ListIt elem) {
+        stack_s_.splice(stack_s_.begin(), stack_s_, elem);
+        prune_StackS();
+        return;
+    }
+
+    void process_hir_res_hit(HashEntry_t& elem) {
+        bool is_in_StackS = elem.itS.has_value();
+ 
+        if (is_in_StackS) {
+            stack_s_.splice(stack_s_.begin(), stack_s_, elem.itS.value());
+     
+            elem.st = LIR;
+            lir_counter++;
+            if (elem.itQ) {
+                stack_q_.erase(elem.itQ.value());
+                elem.itQ = std::nullopt;
+            }
+     
+             prune_StackS();
+        } else {
+            KeyT key = *elem.itQ.value();
+            
+            stack_q_.splice(stack_q_.begin(), stack_q_, elem.itQ.value());
+            
+            stack_s_.push_front(key);
+            elem.itS = stack_s_.begin();
+     
+            prune_StackS();
+        }
+    }
+
+    void process_hir_nres_hit(HashEntry_t& elem, T page) {
+        assert(elem.pg_idx == std::nullopt);
+        
+        elem.pg_idx = add_to_cache(page);        
+        if (elem.itS.has_value()) {
+            stack_s_.splice(stack_s_.begin(), stack_s_, elem.itS.value());
+        } else {
+            stack_s_.push_front(page.id);
+            elem.itS = stack_s_.begin();
+        }
+    
+        if (lir_counter < lir_cap) {
+            elem.st = LIR;
+            lir_counter++;
+        } else {
+            elem.st = HIR_RES;
+            add_to_StackQ(page.id, elem);
+        }
+        prune_StackS();
+    }
+
+
 };
 } //LIRS
