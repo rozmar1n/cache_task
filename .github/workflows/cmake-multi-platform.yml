@@ -30,4 +30,7 @@ jobs:
 
       - name: Test_LIRS 
         run: ctest --test-dir build/LIRS --output-on-failure
+        
+      - name: Test_ideal
+        run: ctest --test-dir ideal --output-on-failure
 
