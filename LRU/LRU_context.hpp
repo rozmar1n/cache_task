@@ -1,4 +1,5 @@
 #include <vector>
+#include <cstddef>
 
 namespace LRU {
 struct page_t {
