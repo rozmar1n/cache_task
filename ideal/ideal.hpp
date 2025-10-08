@@ -5,7 +5,7 @@
 #include <vector>
 #include <cassert>
 #include <iostream>
-
+#include <algorithm>
 
 namespace ideal {
 template <typename T, typename KeyT = int>
@@ -45,16 +45,11 @@ private:
         return number_in_future(start, elem) != -1;
     }
     KeyT least_important_el(int request_num) {
-        KeyT req_id = requests_[request_num];
-        
-        int ret = number_in_future(request_num + 1, req_id);
-        if (ret == -1) return req_id;
-        
+        int ret = request_num; 
         for (auto it = hash_.begin(); it != hash_.end(); it++) {
             T el = it->second.page;
             int fn = it->second.next_req;
             if (fn == -1) {
-                std::cout << "Something strange" <<std::endl;
                 return it->first;
             }
              
@@ -95,6 +90,7 @@ public:
             hash_[key].next_req = number_in_future(request_num + 1, key);
             return false;
         }
+        hit->second.next_req = number_in_future(request_num + 1, key);
         return true;
     }
     
@@ -125,7 +121,7 @@ public:
         cout << "Hash table:" << endl;
         for (const auto &p : hash_) {
             cout << "  key=" << p.first 
-                 << " -> id=" << p.second->id 
+                 << " -> id=" << p.second.page->id 
                  << endl;
         }
     
@@ -152,7 +148,7 @@ public:
         cout << "Hash table:" << endl;
         for (const auto &p : hash_) {
             cout << "  key=" << p.first 
-                 << " -> id=" << p.second->id 
+                 << " -> id=" << p.second.page->id 
                  << endl;
         }
     
