@@ -1,66 +1,58 @@
+from collections import deque
+
+
 class IdealCache:
     def __init__(self, size, requests):
         self.size = size
         self.requests = requests
-        self.cache = {}  
-        self.nums_in_req = {}  
-        self.fill_request_positions()
+        self.cache = {}
+        self.positions = {}
+        for idx, key in enumerate(self.requests):
+            self.positions.setdefault(key, deque()).append(idx)
 
-    def fill_request_positions(self):
-        for i, req in enumerate(self.requests):
-            if req not in self.nums_in_req:
-                self.nums_in_req[req] = []
-            self.nums_in_req[req].append(i)
-
-    def number_in_future(self, start, elem):
-        if elem not in self.nums_in_req:
+    def next_use(self, key):
+        positions = self.positions.get(key)
+        if not positions:
             return -1
-        positions = self.nums_in_req[elem]
-        for pos in positions:
-            if pos >= start:
-                return pos
-        return -1
-
-    def is_in_future(self, start, elem):
-        return self.number_in_future(start, elem) != -1
+        return positions[0]
 
     def least_important_el(self, request_num):
-        current_key = self.requests[request_num]
-        ret = self.number_in_future(request_num + 1, current_key)
-        if ret == -1:
-            return current_key
+        candidate = None
+        farthest_use = -1
 
         for key in self.cache:
-            next_req = self.cache[key]['next_req']
-            if next_req == -1:
+            next_idx = self.next_use(key)
+            if next_idx == -1:
                 return key
-            if ret < next_req:
-                ret = next_req
-        
-        return self.requests[ret]
+            if next_idx > farthest_use:
+                farthest_use = next_idx
+                candidate = key
+
+        return candidate
 
     def lookup_update(self, request_num, slow_get_page):
         key = self.requests[request_num]
-        
-        if key not in self.cache:
-            new_page = slow_get_page(key)
-            
-            if not self.is_in_future(request_num + 1, key):
-                return False
-                
-            if len(self.cache) >= self.size and self.size > 0:
-                for_removal = self.least_important_el(request_num)
-                if key == for_removal:
-                    return False
-                if for_removal in self.cache:
-                    del self.cache[for_removal]
-            
-            self.cache[key] = {
-                'page': new_page,
-                'next_req': self.number_in_future(request_num + 1, key)
-            }
+        positions = self.positions.get(key)
+        if positions and positions[0] == request_num:
+            positions.popleft()
+
+        if key in self.cache:
+            return True
+
+        new_page = slow_get_page(key)
+
+        if self.next_use(key) == -1:
             return False
-        return True
+
+        if len(self.cache) >= self.size and self.size > 0:
+            for_removal = self.least_important_el(request_num)
+            if key == for_removal:
+                return False
+            if for_removal in self.cache:
+                del self.cache[for_removal]
+
+        self.cache[key] = new_page
+        return False
 
     def run_cache(self, slow_get_page):
         hits = 0
@@ -94,6 +86,3 @@ if __name__ == "__main__":
         print(f"Error: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
-
-
-

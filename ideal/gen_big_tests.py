@@ -7,7 +7,7 @@ def generate_test(test_id, out_dir="big_tests"):
 
     size = random.randint(100000, 150000)
     n_requests = random.randint(400000, 600000)
-    requests = [random.randint(1, 100000000) for _ in range(n_requests)]
+    requests = [random.randint(1, 1_000_000) for _ in range(n_requests)]
 
     cache = IdealCache(size, requests)
 
