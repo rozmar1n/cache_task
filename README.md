@@ -68,7 +68,8 @@ printf "2\n5\n1 2 1 3 1\n" | build/LRU/prog
 ├── CMakeLists.txt
 ├── LIRS/         # LIRS cache + тесты и CLI
 ├── LRU/          # LRU cache, общая обвязка и CLI
-├── ideal/        # Алгоритм Bélady, big-tests и генераторы
+├── ideal/        # Алгоритм идеального кэша, big-tests и генераторы
+├── experiments/  # Сравнение алгоритмов LIRS vs ideal
 └── README.md
 ```
 
@@ -80,3 +81,26 @@ printf "2\n5\n1 2 1 3 1\n" | build/LRU/prog
 - `python ideal/gen_big_tests.py` — генерирует файлы `.dat` и `.sol` в `ideal/big_tests/` для нагрузочного тестирования.
 
 Перед запуском убедитесь, что у вас установлен Python 3 и зависимости из стандартной библиотеки достаточно (дополнительные пакеты не требуются).
+
+## Эксперимент LIRS vs Ideal
+
+В каталоге `experiments/lirs_vs_ideal/` находятся все вспомогательные инструменты:
+
+- `datasets/` — входные `.dat` с тестовыми паттернами.
+- `results_lirs/`, `results_ideal/` — CSV-выгрузки с количеством попаданий и hit ratio для каждого алгоритма.
+- `run_experiment.cc` → бинарник `lirs_vs_ideal_benchmark`, запускаемый через CMake.
+- `generate_datasets.py` — генератор случайных сценариев.
+- `plot_results.py` — построение графиков (по умолчанию `lirs_vs_ideal_comparison.png`).
+
+Последовательность работы:
+
+1. Сгенерировать данные (опционально):  
+   `python experiments/lirs_vs_ideal/generate_datasets.py -n 10 --seed 42`
+2. Собрать утилиту:  
+   `cmake --build build --target lirs_vs_ideal_benchmark`
+3. Прогнать сравнение:  
+   `build/experiments/lirs_vs_ideal/lirs_vs_ideal_benchmark`
+4. Построить график:  
+   `python experiments/lirs_vs_ideal/plot_results.py`
+
+Готовый график показывает два бар-чарта (hit ratio LIRS и ideal) и их разницу для каждого набора данных.

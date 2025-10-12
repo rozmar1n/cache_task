@@ -1,0 +1,1 @@
+add_subdirectory(lirs_vs_ideal)
