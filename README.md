@@ -1,83 +1,82 @@
 # Cache Task
 
-This repository contains my solution for the first task in the MIPT ILab C++ course by Konstantin Vladimirov.
-## Technical Stack
+Реализация трёх алгоритмов управления кэшем (LRU, LIRS и «идеальный») в рамках первого задания курса MIPT ILab по C++. Каждый алгоритм снабжён модульными тестами и простой CLI-утилитой для ручных экспериментов и прогонки наборов запросов.
 
-- C++ (94.8%)
-- CMake (5.2%)
+## Реализованные алгоритмы
 
-## Prerequisites
+- **LRU (Least Recently Used)** — классический стековый алгоритм, хранящий в кэше последние использованные страницы.
+- **LIRS (Low Inter-reference Recency Set)** — более продвинутая стратегия, разделяющая страницы на LIR/HIR и обеспечивающая лучшую адаптацию к паттернам доступа.
+- **Ideal cache** — алгоритм для эталонных значений и генерации ответов на больших тестах.
 
-To build and run this project, you need:
-- C++ compiler with C++11 support or higher
-- CMake (3.x or higher)
+## Требования
 
-## Building the Project
+- Компилятор с поддержкой C++17 (GCC, Clang или MSVC).
+- CMake 3.15+.
+- Доступ в интернет при первой сборке (скачивается GoogleTest).
+- Python 3.8+ (только если нужно регенерировать тесты для идеального кэша).
 
-To build the project:
+## Сборка
 
 ```bash
 cmake -S . -B build
-cmake --build buld
+cmake --build build
 ```
 
-## Running Tests
+По умолчанию собираются бинарники тестов и CLI для каждого алгоритма.
 
-After building the project, you can run the tests using:
+## Тестирование
 
-LIRS cache:
+Запустить все тесты целиком:
 
 ```bash
-build/LIRS/LIRS_tests
+cmake --build build --target test
 ```
 
-LRU cache:
+или напрямую:
+
+- `build/LRU/LRU_tests`
+- `build/LIRS/LIRS_tests`
+- `build/ideal/ideal_tests`
+- `build/ideal/ideal_big_tests` — прогон уже сгенерированных big-тестов для идеального кэша.
+
+## CLI и формат ввода
+
+Каждая утилита читает со стандартного ввода размер кэша, количество запросов и последовательность ключей, после чего выводит число cache-hit'ов.
+
+```text
+<cache_size>
+<requests_count>
+<key_1> <key_2> ... <key_n>
+```
+
+Команды запуска:
+
+- `build/LRU/prog`
+- `build/LIRS/LIRS.out`
+- `build/ideal/ideal.out`
+
+Пример:
 
 ```bash
-build/LRU/LRU_tests
+printf "2\n5\n1 2 1 3 1\n" | build/LRU/prog
 ```
 
-Ideal cache:
-
-```bash
-build/ideal/ideal_tests
-
-#for big tests
-build/ideal/ideal_big_tests
-```
-
-## Project Structure
+## Структура проекта
 
 ```
 .
 ├── CMakeLists.txt
-├── README.md
-├── /LIRS
-│   └── [source and tests]
-├── /LRU
-│   └── [source and tests]
-├── /ideal
-    └── [source and tests]
+├── LIRS/         # LIRS cache + тесты и CLI
+├── LRU/          # LRU cache, общая обвязка и CLI
+├── ideal/        # Алгоритм Bélady, big-tests и генераторы
+└── README.md
 ```
 
+## Генерация тестов
 
-## To run CLI versions of program
+В каталоге `ideal/` лежат скрипты для построения наборов тестов:
 
-LIRS cache:
+- `python ideal/gen_tests.py` — пересоздаёт unit-тесты для GoogleTest.
+- `python ideal/gen_big_tests.py` — генерирует файлы `.dat` и `.sol` в `ideal/big_tests/` для нагрузочного тестирования.
 
-```bash
-build/LIRS/LIRS.out
-```
-
-LRU cache:
-
-```bash
-build/LRU/LRU.out
-```
-
-ideal cache:
-
-```bash
-build/ideal/ideal.out
-```
-
+Перед запуском убедитесь, что у вас установлен Python 3 и зависимости из стандартной библиотеки достаточно (дополнительные пакеты не требуются).
