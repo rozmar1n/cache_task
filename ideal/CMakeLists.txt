@@ -1,5 +1,7 @@
 include(GoogleTest)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
+
 add_executable(ideal_tests ideal_tests.cc)
 target_link_libraries(ideal_tests PRIVATE GTest::gtest_main)
 gtest_discover_tests(ideal_tests DISCOVERY_MODE PRE_TEST)
@@ -12,5 +14,6 @@ gtest_discover_tests(ideal_big_tests
     DISCOVERY_MODE PRE_TEST
 )
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/cli)
 add_executable(ideal.out ideal.cc)
 

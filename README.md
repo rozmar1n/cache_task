@@ -34,10 +34,10 @@ cmake --build build --target test
 
 или напрямую:
 
-- `build/LRU/LRU_tests`
-- `build/LIRS/LIRS_tests`
-- `build/ideal/ideal_tests`
-- `build/ideal/ideal_big_tests` — прогон уже сгенерированных big-тестов для идеального кэша.
+- `build/tests/LRU_tests`
+- `build/tests/LIRS_tests`
+- `build/tests/ideal_tests`
+- `build/tests/ideal_big_tests` — прогон уже сгенерированных big-тестов для идеального кэша.
 
 ## CLI и формат ввода
 
@@ -51,14 +51,14 @@ cmake --build build --target test
 
 Команды запуска:
 
-- `build/LRU/prog`
-- `build/LIRS/LIRS.out`
-- `build/ideal/ideal.out`
+- `build/cli/LRU.out`
+- `build/cli/LIRS.out`
+- `build/cli/ideal.out`
 
 Пример:
 
 ```bash
-printf "2\n5\n1 2 1 3 1\n" | build/LRU/prog
+printf "2\n5\n1 2 1 3 1\n" | build/cli/LRU.out
 ```
 
 ## Структура проекта
