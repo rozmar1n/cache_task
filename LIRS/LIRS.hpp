@@ -21,7 +21,6 @@ class cache_t {
     size_t lir_counter = 0;
     
     enum status {
-        INVALID = -1,
         LIR, 
         HIR_RES, 
         HIR_NRES
@@ -42,13 +41,13 @@ class cache_t {
         std::optional<ListIt> itQ;
         std::optional<size_t> pg_idx; 
        
-        status st = INVALID;
+        std::optional<status> st;
 
         HashEntry_t() = default;
 
         HashEntry_t(std::optional<ListIt> s, 
                     std::optional<ListIt> q,
-                    status st = INVALID,
+                    status st = std::nullopt,
                     std::optional<size_t> p = std::nullopt) 
         :   itS(s), 
             itQ(q),
@@ -58,6 +57,7 @@ class cache_t {
 
 
     std::unordered_map<KeyT, HashEntry_t> hash_;
+    using HashIt = typename std::unordered_map<KeyT, HashEntry_t>::iterator;
 
 public:
     cache_t(size_t sz, double hir_ratio = 0.1) : sz_(sz) {
@@ -85,8 +85,8 @@ public:
             return false;
         }
         auto &eltit = hit->second;
-
-        switch (eltit.st) {
+        assert(eltit.st.has_value() && "Hash entry without state");
+        switch (eltit.st.value()) {
             case LIR:
                 proc_LIR(eltit.itS.value());
                 return true;
@@ -214,6 +214,36 @@ private:
         return idx;
     }
 
+
+
+    bool demote_LIR(KeyT bottom_id, HashIt it) {
+        auto entry = it->second;
+        
+        if (lir_counter > lir_cap) {
+            entry.st = HIR_RES;
+            lir_counter--;
+             
+            add_to_StackQ(bottom_id, it->second);
+             
+            stack_s_.pop_back();
+            entry.itS = std::nullopt;
+            return true;
+        }
+        return false;
+    }
+
+    void erase_HIR(KeyT bottom_id, HashIt it) {
+                stack_s_.pop_back();
+                 
+                auto &entry = it->second;
+                if (entry.st == HIR_RES) {
+                    entry.itS = std::nullopt;
+                } else {
+                    assert(entry.pg_idx == std::nullopt);
+                    hash_.erase(bottom_id);
+                }
+    }
+
     void prune_StackS() {
         while (!stack_s_.empty()) {
             KeyT bottom_id = stack_s_.back();
@@ -222,27 +252,12 @@ private:
             auto &entry = it->second;
             
             if (entry.st == LIR) {
-                if (lir_counter > lir_cap) {
-                    entry.st = HIR_RES;
-                    lir_counter--;
-                    
-                    add_to_StackQ(bottom_id, it->second);
-                    
-                    stack_s_.pop_back();
-                    entry.itS = std::nullopt;
-                } else {
+                if (!demote_LIR(bottom_id, it)) {
                     break;
                 }
             } 
             else {
-                stack_s_.pop_back();
-                
-                if (entry.st == HIR_RES) {
-                    entry.itS = std::nullopt;
-                } else {
-                    assert(entry.pg_idx == std::nullopt);
-                    hash_.erase(bottom_id);
-                }
+                erase_HIR(bottom_id, it);
             }
         }
     }

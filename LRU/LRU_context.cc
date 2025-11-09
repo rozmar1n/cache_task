@@ -9,8 +9,11 @@ LRU::page_t LRU::slow_get_page(int key) {
 LRU::cache_test_context::cache_test_context()
     : cz(0), data() {}
 
-void LRU::cache_test_context::take_data() {
-    std::cin >> cz;
+bool LRU::cache_test_context::take_data() {
+    if(!(std::cin >> cz)) {
+        std::cout << "invalid input" << std::endl;
+        return 0;
+    }
 
     int n;
     std::cin >> n;
@@ -20,6 +23,7 @@ void LRU::cache_test_context::take_data() {
         std::cin >> key;
         data.push_back(key);
     }
+    return 1;
 }
 
 int LRU::cache_test_context::run() {

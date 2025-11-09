@@ -11,12 +11,27 @@ page_t slow_get_page(int id) {
 
 int main() {
     size_t ch_size = 0;
-    std::cin >> ch_size;
+    if(!(std::cin >> ch_size)) {
+        std::cout << "invalid input" << std::endl;
+        return 1;
+    }
+    if (ch_size <= 1) {
+        std::cout << "cache size must be greater than 1" << std::endl;
+        return 1;
+    }
     LIRS::cache_t<page_t> ch{ch_size};
     
     int N_pushes = 0;
+    
 
-    std::cin >> N_pushes;
+    if (ch_size < 1) {
+        std::cout << "cache size must be at least 1" << std::endl;
+        return 1;
+    }
+
+    if(!(std::cin >> N_pushes)) {
+        std::cout << "invalid input" << std::endl; 
+    }
     int counter = 0;
     int hit = 0;
     for(int i = 0; i < N_pushes; i++) {

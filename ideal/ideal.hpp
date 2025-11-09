@@ -148,7 +148,7 @@ public:
         cout << "Hash table:" << endl;
         for (const auto &p : hash_) {
             cout << "  key=" << p.first 
-                 << " -> id=" << p.second.page->id 
+                 << " -> id=" << p.second.page.id 
                  << endl;
         }
     

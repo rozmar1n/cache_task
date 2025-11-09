@@ -12,7 +12,10 @@ page_t sgp(int id) {
 int main() {
     size_t sz = 0;
     int n_hits = 0;
-    std::cin >> sz >> n_hits;
+    if(!(std::cin >> sz >> n_hits)) {
+        std::cout << "invalid input" << std::endl;
+        return 1;
+    }
     std::vector<int> req;
     for(int i = 0; i < n_hits; i++) {
         int hit;

@@ -14,6 +14,6 @@ struct cache_test_context {
 public:
     cache_test_context();
     int run(); 
-    void take_data();
+    bool take_data();
 };
 } /*namespace LRU*/
