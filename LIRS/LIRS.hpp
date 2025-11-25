@@ -20,7 +20,7 @@ class cache_t {
     size_t hir_cap;
     size_t lir_counter = 0;
     
-    enum status {
+    enum class status {
         LIR, 
         HIR_RES, 
         HIR_NRES
@@ -47,7 +47,7 @@ class cache_t {
 
         HashEntry_t(std::optional<ListIt> s, 
                     std::optional<ListIt> q,
-                    status st = std::nullopt,
+                    std::optional<status> st = std::nullopt,
                     std::optional<size_t> p = std::nullopt) 
         :   itS(s), 
             itQ(q),
@@ -87,13 +87,13 @@ public:
         auto &eltit = hit->second;
         assert(eltit.st.has_value() && "Hash entry without state");
         switch (eltit.st.value()) {
-            case LIR:
+            case status::LIR:
                 proc_LIR(eltit.itS.value());
                 return true;
-            case HIR_RES:
+            case status::HIR_RES:
                 process_hir_res_hit(eltit);
                 return true;
-            case HIR_NRES:
+            case status::HIR_NRES:
                 process_hir_nres_hit(eltit, slow_get_page(key));
                 return false;
             default:
@@ -103,70 +103,91 @@ public:
     }
 
 
-    void print() const {
-        std::cout << "CACHE: sz=" << sz_
-                  << " LIR_cap=" << lir_cap
-                  << " HIR_cap=" << hir_cap
-                  << " LIR_count=" << lir_counter
-                  << " StackS.size=" << stack_s_.size()
-                  << " StackQ.size=" << stack_q_.size()
-                  << "\n";
-    
-        std::cout << "StackS (front -> back):\n";
-        size_t idx = 0;
-        for (auto key = stack_s_.begin(); key != stack_s_.end(); ++key, ++idx) {
-            std::cout << "  [" << idx << "] id=" << *key;
-            auto h = hash_.find(*key);
-            if (h != hash_.end()) {
-                std::cout << " st=";
-                switch (h->second.st) {
-                    case LIR:     std::cout << "LIR";       break;
-                    case HIR_RES: std::cout << "HIR_RES";   break;
-                    case HIR_NRES:std::cout << "HIR_NRES";  break;
+    class Dumper {
+        const cache_t &cache_;
+
+        explicit Dumper(const cache_t &cache) : cache_(cache) {}
+        friend class cache_t;
+
+        static void print_status(std::ostream &os, std::optional<status> st) {
+            if (!st) {
+                return;
+            }
+            switch (*st) {
+                case status::LIR:      os << "LIR";       break;
+                case status::HIR_RES:  os << "HIR_RES";   break;
+                case status::HIR_NRES: os << "HIR_NRES";  break;
+            }
+        }
+
+        void dump_header(std::ostream &os) const {
+            os << "CACHE: sz=" << cache_.sz_
+               << " LIR_cap=" << cache_.lir_cap
+               << " HIR_cap=" << cache_.hir_cap
+               << " LIR_count=" << cache_.lir_counter
+               << " StackS.size=" << cache_.stack_s_.size()
+               << " StackQ.size=" << cache_.stack_q_.size()
+               << "\n";
+        }
+
+        void dump_stack_s(std::ostream &os) const {
+            os << "StackS (front -> back):\n";
+            size_t idx = 0;
+            for (auto key = cache_.stack_s_.begin(); key != cache_.stack_s_.end(); ++key, ++idx) {
+                os << "  [" << idx << "] id=" << *key;
+                auto h = cache_.hash_.find(*key);
+                if (h != cache_.hash_.end()) {
+                    os << " st=";
+                    print_status(os, h->second.st);
+                    os << " itS=" << (h->second.itS ? "yes" : "no");
+                    os << " itQ=" << (h->second.itQ ? "yes" : "no");
+                } else {
+                    os << " (no hash entry)";
                 }
-                std::cout << " itS=" << (h->second.itS ? "yes" : "no");
-                std::cout << " itQ=" << (h->second.itQ ? "yes" : "no");
-            } else {
-                std::cout << " (no hash entry)";
+                os << "\n";
             }
-            std::cout << "\n";
         }
 
-        std::cout << "StackQ (front -> back):\n";
-        idx = 0;
-        for (auto it = stack_q_.begin(); it != stack_q_.end(); ++it, ++idx) {
-            auto key = *it;
-            std::cout << "  [" << idx << "] id=" << key;
-            auto h = hash_.find(key);
-            if (h != hash_.end()) {
-                std::cout << " st=";
-                switch (h->second.st) {
-                    case LIR:     std::cout << "LIR";       break;
-                    case HIR_RES: std::cout << "HIR_RES";   break;
-                    case HIR_NRES:std::cout << "HIR_NRES";  break;
+        void dump_stack_q(std::ostream &os) const {
+            os << "StackQ (front -> back):\n";
+            size_t idx = 0;
+            for (auto it = cache_.stack_q_.begin(); it != cache_.stack_q_.end(); ++it, ++idx) {
+                auto key = *it;
+                os << "  [" << idx << "] id=" << key;
+                auto h = cache_.hash_.find(key);
+                if (h != cache_.hash_.end()) {
+                    os << " st=";
+                    print_status(os, h->second.st);
+                    os << " itS=" << (h->second.itS ? "yes" : "no");
+                    os << " itQ=" << (h->second.itQ ? "yes" : "no");
                 }
-                std::cout << " itS=" << (h->second.itS ? "yes" : "no");
-                std::cout << " itQ=" << (h->second.itQ ? "yes" : "no");
+                os << "\n";
             }
-            std::cout << "\n";
         }
 
-        std::cout << "Hash table entries:\n";
-        for (const auto &kv : hash_) {
-            std::cout << "  key=" << kv.first << " st=";
-            switch (kv.second.st) {
-                case LIR:     std::cout << "LIR";       break;
-                case HIR_RES: std::cout << "HIR_RES";   break;
-                case HIR_NRES:std::cout << "HIR_NRES";  break;
+        void dump_hash(std::ostream &os) const {
+            os << "Hash table entries:\n";
+            for (const auto &kv : cache_.hash_) {
+                os << "  key=" << kv.first << " st=";
+                print_status(os, kv.second.st);
+                os << " itS="  << (kv.second.itS  ? "yes" : "no");
+                os << " itQ="  << (kv.second.itQ  ? "yes" : "no");
+                os << " page=" << (kv.second.pg_idx.has_value() ? "yes" : "no");
+                os << "\n";
             }
-            std::cout << " itS="  << (kv.second.itS  ? "yes" : "no");
-            std::cout << " itQ="  << (kv.second.itQ  ? "yes" : "no");
-            std::cout << " page=" << (kv.second.pg_idx.has_value() ? "yes" : "no");
-            std::cout << "\n";
         }
+    public:
+        void dump(std::ostream &os = std::cout) const {
+            dump_header(os);
+            dump_stack_s(os);
+            dump_stack_q(os);
+            dump_hash(os);
+            os << std::flush;
+        }
+    };
 
-        std::cout << std::flush;
-    }
+    Dumper dumper() const { return Dumper(*this); }
+    void print() const { dumper().dump(); }
 private:
     void free_place() {
         KeyT victim_id = stack_q_.back();
@@ -177,7 +198,7 @@ private:
         bool in_StackS = victim.itS != std::nullopt;
         
         if (in_StackS) {
-            victim.st = HIR_NRES;
+            victim.st = status::HIR_NRES;
             assert(victim.pg_idx.has_value()); 
             
             delete_from_cache(victim.pg_idx.value());
@@ -204,12 +225,16 @@ private:
         
         size_t idx = free_list_.back();
         free_list_.pop_back();
-        cache_[idx] = page;
+        try {
+            cache_[idx] = std::move(page);
+        } catch (...) {
+            free_list_.push_back(idx);
+            throw;
+        }
         return idx;
     }
 
     size_t delete_from_cache(size_t idx) {
-        //TODO: подумать, стоит ли как-то занулить страницу в кэше
         free_list_.push_back(idx);
         return idx;
     }
@@ -220,7 +245,7 @@ private:
         auto entry = it->second;
         
         if (lir_counter > lir_cap) {
-            entry.st = HIR_RES;
+            entry.st = status::HIR_RES;
             lir_counter--;
              
             add_to_StackQ(bottom_id, it->second);
@@ -236,7 +261,7 @@ private:
                 stack_s_.pop_back();
                  
                 auto &entry = it->second;
-                if (entry.st == HIR_RES) {
+                if (entry.st == status::HIR_RES) {
                     entry.itS = std::nullopt;
                 } else {
                     assert(entry.pg_idx == std::nullopt);
@@ -251,7 +276,7 @@ private:
             assert(it != hash_.end());
             auto &entry = it->second;
             
-            if (entry.st == LIR) {
+            if (entry.st == status::LIR) {
                 if (!demote_LIR(bottom_id, it)) {
                     break;
                 }
@@ -277,20 +302,36 @@ private:
     }
 
     void add_new(T page) {
-        stack_s_.push_front(page.id);
-    
-        size_t idx = add_to_cache(page);;
-        auto &entry_it = hash_[page.id];
-        if (lir_counter < lir_cap) {
-            entry_it = HashEntry_t(stack_s_.begin(), 
-                                         std::nullopt, LIR, idx);
-            lir_counter++;
-        } else {
-            entry_it = HashEntry_t(stack_s_.begin(), 
-                                         std::nullopt, HIR_RES, idx);
-            add_to_StackQ(page.id, entry_it);  
+        KeyT key = page.id;
+        size_t idx = add_to_cache(std::move(page));
+        bool stack_inserted = false;
+        try {
+            stack_s_.push_front(key);
+            stack_inserted = true;
+
+            auto [it, inserted] = hash_.try_emplace(key);
+            if (!inserted) {
+                throw std::logic_error("Unexpected duplicate key insertion");
+            }
+            auto &entry_it = it->second;
+            if (lir_counter < lir_cap) {
+                entry_it = HashEntry_t(stack_s_.begin(), 
+                                             std::nullopt, status::LIR, idx);
+                lir_counter++;
+            } else {
+                entry_it = HashEntry_t(stack_s_.begin(), 
+                                             std::nullopt, status::HIR_RES, idx);
+                add_to_StackQ(key, entry_it);  
+            }
+            prune_StackS();
+        } catch (...) {
+            if (stack_inserted) {
+                stack_s_.pop_front();
+            }
+            hash_.erase(key);
+            delete_from_cache(idx);
+            throw;
         }
-        prune_StackS();
     }
  
 
@@ -306,7 +347,7 @@ private:
         if (is_in_StackS) {
             stack_s_.splice(stack_s_.begin(), stack_s_, elem.itS.value());
      
-            elem.st = LIR;
+            elem.st = status::LIR;
             lir_counter++;
             if (elem.itQ) {
                 stack_q_.erase(elem.itQ.value());
@@ -329,22 +370,43 @@ private:
     void process_hir_nres_hit(HashEntry_t& elem, T page) {
         assert(elem.pg_idx == std::nullopt);
         
-        elem.pg_idx = add_to_cache(page);        
-        if (elem.itS.has_value()) {
-            stack_s_.splice(stack_s_.begin(), stack_s_, elem.itS.value());
-        } else {
-            stack_s_.push_front(page.id);
-            elem.itS = stack_s_.begin();
+        KeyT key = page.id;
+        size_t idx = add_to_cache(std::move(page));        
+        elem.pg_idx = idx;
+
+        bool added_to_stack = false;
+        bool added_to_q = false;
+        try {
+            if (elem.itS.has_value()) {
+                stack_s_.splice(stack_s_.begin(), stack_s_, elem.itS.value());
+            } else {
+                stack_s_.push_front(key);
+                added_to_stack = true;
+                elem.itS = stack_s_.begin();
+            }
+        
+            if (lir_counter < lir_cap) {
+                elem.st = status::LIR;
+                lir_counter++;
+            } else {
+                elem.st = status::HIR_RES;
+                add_to_StackQ(key, elem);
+                added_to_q = true;
+            }
+            prune_StackS();
+        } catch (...) {
+            if (added_to_q && elem.itQ) {
+                stack_q_.erase(elem.itQ.value());
+                elem.itQ = std::nullopt;
+            }
+            if (added_to_stack && elem.itS) {
+                stack_s_.pop_front();
+                elem.itS = std::nullopt;
+            }
+            elem.pg_idx = std::nullopt;
+            delete_from_cache(idx);
+            throw;
         }
-    
-        if (lir_counter < lir_cap) {
-            elem.st = LIR;
-            lir_counter++;
-        } else {
-            elem.st = HIR_RES;
-            add_to_StackQ(page.id, elem);
-        }
-        prune_StackS();
     }
 
 

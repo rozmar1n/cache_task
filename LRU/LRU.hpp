@@ -3,6 +3,7 @@
 #include <list>
 #include <unordered_map>
 #include <cstddef>
+#include <iostream>
 
 
 namespace LRU {
@@ -26,14 +27,27 @@ public:
     {    
         auto hit = hash_.find(key);
         if (hit == hash_.end()) { // not found
-            if (full() && cache_.size() != 0) {
-                hash_.erase(cache_.back().id);
-                cache_.pop_back();
+            T new_page = slow_get_page(key); // может бросить, состояние не меняем
+
+            bool pushed = false;
+            try {
+                cache_.push_front(new_page); // может бросить
+                pushed = true;
+                hash_[key] = cache_.begin(); // может бросить
+
+                if (cache_.size() > sz_ && cache_.size() != 0) {
+                    KeyT rem_key = cache_.back().id;
+                    cache_.pop_back();
+                    hash_.erase(rem_key);
+                }
+                return false;
+            } catch (...) {
+                if (pushed) {
+                    cache_.pop_front();
+                }
+                hash_.erase(key);
+                throw;
             }
-            // fallback to slow method
-            cache_.push_front(slow_get_page(key));
-            hash_[key] = cache_.begin();
-            return false;
         }
         auto eltit = hit->second;
         if (eltit != cache_.begin())
@@ -41,6 +55,46 @@ public:
                           eltit, std::next(eltit));
         return true;
     }  
+
+    class Dumper {
+        const cache_t &cache_;
+
+        explicit Dumper(const cache_t &cache) : cache_(cache) {}
+        friend class cache_t;
+
+        void dump_header(std::ostream &os) const {
+            os << "CACHE: sz=" << cache_.sz_
+               << " size=" << cache_.cache_.size()
+               << "\n";
+        }
+
+        void dump_list(std::ostream &os) const {
+            os << "List (front -> back):\n";
+            size_t idx = 0;
+            for (const auto &page : cache_.cache_) {
+                os << "  [" << idx << "] id=" << page.id << "\n";
+                ++idx;
+            }
+        }
+
+        void dump_hash(std::ostream &os) const {
+            os << "Hash entries:\n";
+            for (const auto &kv : cache_.hash_) {
+                os << "  key=" << kv.first
+                   << " -> id=" << kv.second->id
+                   << "\n";
+            }
+        }
+    public:
+        void dump(std::ostream &os = std::cout) const {
+            dump_header(os);
+            dump_list(os);
+            dump_hash(os);
+            os << std::flush;
+        }
+    };
+
+    Dumper dumper() const { return Dumper(*this); }
+    void print() const { dumper().dump(); }
 };
 } /*namespace LRU*/
-

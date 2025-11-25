@@ -6,6 +6,7 @@
 #include <cassert>
 #include <iostream>
 #include <algorithm>
+#include <optional>
 
 namespace ideal {
 template <typename T, typename KeyT = int>
@@ -77,18 +78,30 @@ public:
             if (!is_in_future(request_num + 1, key)) {
                 return false;
             }
-            if (full() && hash_.size() != 0) {
-                KeyT for_removal = least_important_el(request_num);
-                if(key == for_removal) return false;
 
-                auto fr_it = hash_.find(for_removal);
-                assert(fr_it != hash_.end());
-                hash_.erase(for_removal);
+            std::optional<std::pair<KeyT, hash_entry>> evicted;
+            try {
+                if (full() && hash_.size() != 0) {
+                    KeyT for_removal = least_important_el(request_num);
+                    if(key == for_removal) return false;
+
+                    auto fr_it = hash_.find(for_removal);
+                    assert(fr_it != hash_.end());
+                    evicted = std::make_pair(fr_it->first, fr_it->second);
+                    hash_.erase(fr_it);
+                }
+                
+                hash_entry entry;
+                entry.page = new_page;
+                entry.next_req = number_in_future(request_num + 1, key);
+                hash_[key] = std::move(entry);
+                return false;
+            } catch (...) {
+                if (evicted) {
+                    hash_.emplace(evicted->first, std::move(evicted->second));
+                }
+                throw;
             }
-            
-            hash_[key].page = new_page;
-            hash_[key].next_req = number_in_future(request_num + 1, key);
-            return false;
         }
         hit->second.next_req = number_in_future(request_num + 1, key);
         return true;
@@ -105,58 +118,57 @@ public:
         return counter;
     }
 
-    void print() const {
-        using std::cout;
-        using std::endl;
-    
-        cout << "=== CACHE DEBUG PRINT ===" << endl;
-    
-        cout << "Cache size: " << sz_ << endl;
-        cout << "Requests: [ ";
-        for (size_t i = 0; i < requests_.size(); i++) {
-            cout << requests_[i] << (i + 1 < requests_.size() ? " " : "");
-        }
-        cout << " ]" << endl;
-    
-        cout << "Hash table:" << endl;
-        for (const auto &p : hash_) {
-            cout << "  key=" << p.first 
-                 << " -> id=" << p.second.page->id 
-                 << endl;
-        }
-    
-        cout << "=========================" << endl;
-    }
+    class Dumper {
+        const cache_t &cache_;
 
-    void print(size_t request_num) const {
-        using std::cout;
-        using std::endl;
-    
-        cout << "=== CACHE DEBUG PRINT ===" << endl;
-        
-        cout << "Cache size: " << sz_ << endl;
-        cout << "Requests: [ ";
-        for (size_t i = 0; i < requests_.size(); i++) {
-            if (i == request_num) {
-                cout << ">>" << requests_[i] << "<< ";
-            } else {
-                cout << requests_[i] << " ";
+        explicit Dumper(const cache_t &cache) : cache_(cache) {}
+        friend class cache_t;
+
+        void dump_requests(std::ostream &os, std::optional<size_t> current) const {
+            os << "Requests: [ ";
+            for (size_t i = 0; i < cache_.requests_.size(); i++) {
+                if (current && i == *current) {
+                    os << ">>" << cache_.requests_[i] << "<<";
+                } else {
+                    os << cache_.requests_[i];
+                }
+                if (i + 1 < cache_.requests_.size()) {
+                    os << " ";
+                }
+            }
+            os << " ]" << std::endl;
+        }
+
+        void dump_hash(std::ostream &os) const {
+            os << "Hash table:" << std::endl;
+            for (const auto &p : cache_.hash_) {
+                os << "  key=" << p.first 
+                   << " -> id=" << p.second.page.id 
+                   << std::endl;
             }
         }
-        cout << "]" << endl;
-    
-        cout << "Hash table:" << endl;
-        for (const auto &p : hash_) {
-            cout << "  key=" << p.first 
-                 << " -> id=" << p.second.page.id 
-                 << endl;
+
+        void dump_impl(std::optional<size_t> request_num, std::ostream &os) const {
+            os << "=== CACHE DEBUG PRINT ===" << std::endl;
+            os << "Cache size: " << cache_.sz_ << std::endl;
+            dump_requests(os, request_num);
+            dump_hash(os);
+            os << "=========================" << std::endl;
         }
-    
-        cout << "=========================" << endl;
-    }
+    public:
+        void dump(std::ostream &os = std::cout) const {
+            dump_impl(std::nullopt, os);
+        }
+
+        void dump(size_t request_num, std::ostream &os = std::cout) const {
+            dump_impl(request_num, os);
+        }
+    };
+
+    Dumper dumper() const { return Dumper(*this); }
+    void print() const { dumper().dump(); }
+    void print(size_t request_num) const { dumper().dump(request_num); }
 
 
 };
 } /*namespace ideal*/
-
-
